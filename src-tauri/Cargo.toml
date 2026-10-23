@@ -1,0 +1,49 @@
+[package]
+name = "auto-add-new-mod"
+version = "0.1.0"
+description = "Multi-game inbox: extract and place mods"
+authors = ["kamin"]
+edition = "2021"
+
+[[bin]]
+name = "AutoAddNewMod"
+path = "src/main.rs"
+
+[lib]
+name = "auto_add_new_mod_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+tauri-plugin-log = { version = "2", features = ["colored"] }
+walkdir = "2.5"
+zip = "4.6"
+unrar = "0.5.8"
+sevenz-rust2 = "0.20"
+aes = "0.8"
+cbc = "0.1"
+aes-gcm = "0.10"
+base64 = "0.22"
+sha2 = "0.10"
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+dirs = "6"
+uuid = { version = "1", features = ["v4"] }
+notify = "6"
+notify-debouncer-mini = "0.4"
+parking_lot = "0.12"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
