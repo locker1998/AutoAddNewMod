@@ -5,7 +5,6 @@ use serde::Serialize;
 use tauri::{AppHandle, State};
 
 use crate::config::{ensure_incoming, AppConfig, PartialAppConfig};
-use crate::config::app_config::{self, GameAuthorSettings};
 use crate::inbox::{
     delete_inbox_items, import_paths_to_inbox, list_inbox_items, InboxWatcher,
 };
@@ -72,11 +71,6 @@ pub fn validate_mod_logic(source: String) -> ValidateModLogicResult {
 #[tauri::command]
 pub fn parse_author_logic(source: String) -> Result<crate::pipeline::mod_logic::ModLogicView, String> {
     parse_mod_logic(&source).map(|l| l.to_view())
-}
-
-#[tauri::command]
-pub fn preset_authors_for_game(name: String, id: String) -> Vec<GameAuthorSettings> {
-    app_config::preset_authors_for_game(&id, &name)
 }
 
 #[tauri::command]

@@ -6,9 +6,7 @@ use log::{info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::pipeline::mod_logic::{
-    bd2_author_presets, default_mod_logic_template, former_builtin_author_logic,
-    is_bd2_game_label, is_generic_mod_logic, parse_mod_logic, preset_matches,
-    strip_legacy_decrypt_commands, AuthorPreset,
+    default_mod_logic_template, parse_mod_logic, strip_legacy_decrypt_commands,
 };
 use crate::util::{app_data_dir, default_incoming_dir, ensure_dir_exists};
 
@@ -87,7 +85,7 @@ fn default_true() -> bool {
     true
 }
 
-const CONFIG_VERSION: u32 = 8;
+const CONFIG_VERSION: u32 = 9;
 
 fn default_config_version() -> u32 {
     0
@@ -179,15 +177,9 @@ impl AppConfig {
             if cfg.config_version < 7 {
                 cfg.migrate_authors_v7();
             }
-            if cfg.config_version < 8 {
-                cfg.migrate_authors_v8();
-            }
             cfg.config_version = CONFIG_VERSION;
         }
         cfg.sanitize_game_authors();
-        for game in &mut cfg.games {
-            ensure_bd2_authors(game);
-        }
         cfg.migrate_legacy_author_secrets();
         cfg.normalize_incoming();
         let _ = cfg.save();
@@ -233,9 +225,6 @@ impl AppConfig {
             self.last_author = Some(last_author);
         }
         self.sanitize_game_authors();
-        for game in &mut self.games {
-            ensure_bd2_authors(game);
-        }
         self.normalize_incoming();
     }
 
@@ -252,16 +241,13 @@ impl AppConfig {
         for game in &mut self.games {
             for author in &mut game.authors {
                 if author.name.trim().is_empty() {
-                    author.name = former_builtin_display_name(&author.id)
-                        .unwrap_or(author.id.as_str())
-                        .to_string();
+                    author.name = author.id.clone();
                 }
                 if author.id.trim().is_empty() {
                     author.id = slugify_author_name(&author.name);
                 }
                 if author.custom_logic.trim().is_empty() {
-                    author.custom_logic = former_builtin_author_logic(&author.id, &author.name)
-                        .unwrap_or_else(default_mod_logic_template);
+                    author.custom_logic = default_mod_logic_template();
                 }
             }
         }
@@ -293,27 +279,15 @@ impl AppConfig {
         }
     }
 
-    /// Copy former built-in author scripts into each author's custom_logic (no decrypt).
+    /// Fill empty or unreadable scripts with the generic extract template.
     fn migrate_authors_v5(&mut self) {
         for game in &mut self.games {
             for author in &mut game.authors {
-                let Some(script) = former_builtin_author_logic(&author.id, &author.name) else {
-                    continue;
-                };
                 let trimmed = author.custom_logic.trim();
-                if trimmed.is_empty() {
-                    author.custom_logic = script;
-                    continue;
-                }
-                match parse_mod_logic(&strip_legacy_decrypt_commands(trimmed)) {
-                    Ok(logic) => {
-                        if logic.fields.is_empty() {
-                            author.custom_logic = script;
-                        }
-                    }
-                    Err(_) => {
-                        author.custom_logic = script;
-                    }
+                if trimmed.is_empty()
+                    || parse_mod_logic(&strip_legacy_decrypt_commands(trimmed)).is_err()
+                {
+                    author.custom_logic = default_mod_logic_template();
                 }
             }
         }
@@ -324,8 +298,7 @@ impl AppConfig {
             for author in &mut game.authors {
                 let stripped = strip_legacy_decrypt_commands(&author.custom_logic);
                 author.custom_logic = if stripped.trim().is_empty() {
-                    former_builtin_author_logic(&author.id, &author.name)
-                        .unwrap_or_else(default_mod_logic_template)
+                    default_mod_logic_template()
                 } else {
                     stripped
                 };
@@ -337,16 +310,9 @@ impl AppConfig {
         for game in &mut self.games {
             for author in &mut game.authors {
                 if parse_mod_logic(&author.custom_logic).is_err() {
-                    author.custom_logic = former_builtin_author_logic(&author.id, &author.name)
-                        .unwrap_or_else(default_mod_logic_template);
+                    author.custom_logic = default_mod_logic_template();
                 }
             }
-        }
-    }
-
-    fn migrate_authors_v8(&mut self) {
-        for game in &mut self.games {
-            ensure_bd2_authors(game);
         }
     }
 
@@ -496,85 +462,19 @@ pub fn ensure_incoming(config: &AppConfig) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
-fn former_builtin_display_name(profile_id: &str) -> Option<&'static str> {
-    match profile_id {
-        "yuk11sh1d4" => Some("Yuk11sh1d4"),
-        "na0h" => Some("Na0h"),
-        "hcoel" => Some("H.Coel"),
-        _ => None,
-    }
-}
-
-pub fn author_from_preset(preset: &AuthorPreset) -> GameAuthorSettings {
-    GameAuthorSettings {
-        id: preset.id.to_string(),
-        name: preset.name.to_string(),
-        auth_mode: "key".to_string(),
-        key_path: None,
-        passwords: Vec::new(),
-        field_values: HashMap::new(),
-        custom_logic: (preset.logic)(),
-    }
-}
-
-pub fn preset_authors_for_game(id: &str, name: &str) -> Vec<GameAuthorSettings> {
-    if !is_bd2_game_label(id, name) {
-        return Vec::new();
-    }
-    bd2_author_presets()
-        .iter()
-        .map(author_from_preset)
-        .collect()
-}
-
-fn ensure_bd2_authors(game: &mut GameConfig) {
-    if !is_bd2_game_label(&game.id, &game.name) {
-        return;
-    }
-    for preset in bd2_author_presets() {
-        if let Some(existing) = game
-            .authors
-            .iter_mut()
-            .find(|a| preset_matches(preset, &a.id, &a.name))
-        {
-            if is_generic_mod_logic(&existing.custom_logic) {
-                existing.custom_logic = (preset.logic)();
-            }
-            if existing.name.eq_ignore_ascii_case(preset.id) {
-                existing.name = preset.name.to_string();
-            }
-        } else {
-            game.authors.push(author_from_preset(preset));
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn brown_dust_ii_seeds_missing_bd2_authors() {
-        let mut game = GameConfig {
-            id: "brown-dust-ii".into(),
-            name: "Brown Dust II".into(),
+    fn new_game_has_no_builtin_authors() {
+        let game = GameConfig {
+            id: "any-game".into(),
+            name: "Any Game".into(),
             mod_folder: String::new(),
             organize_by_author: true,
-            authors: vec![GameAuthorSettings {
-                id: "yuk11sh1d4".into(),
-                name: "yuk11sh1d4".into(),
-                auth_mode: "key".into(),
-                key_path: None,
-                passwords: Vec::new(),
-                field_values: HashMap::new(),
-                custom_logic: "extract auto\nplace author\n".into(),
-            }],
+            authors: Vec::new(),
         };
-        ensure_bd2_authors(&mut game);
-        assert_eq!(game.authors.len(), 3);
-        assert_eq!(game.authors[0].name, "Yuk11sh1d4");
-        assert!(game.authors.iter().any(|a| a.id == "na0h" && a.name == "Na0h"));
-        assert!(game.authors.iter().any(|a| a.id == "hcoel" && a.name == "H.Coel"));
-        assert!(parse_mod_logic(&game.authors[0].custom_logic).is_ok());
+        assert!(game.authors.is_empty());
     }
 }

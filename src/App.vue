@@ -426,17 +426,12 @@ async function confirmAddGame() {
   const name = addGameName.value.trim();
   if (!name) return;
   const id = newGameId(name);
-  const authors = await invoke<GameAuthorSettings[]>("preset_authors_for_game", {
-    name,
-    id,
-  });
-  for (const a of authors) ensureAuthorShape(a);
   config.value.games.push({
     id,
     name,
     modFolder: "",
     organizeByAuthor: true,
-    authors,
+    authors: [],
   });
   addGameModal.value = false;
   expandedGames.value = new Set([...expandedGames.value, id]);
@@ -1009,7 +1004,7 @@ onUnmounted(() => {
           <label>Game name</label>
           <input
             v-model="addGameName"
-            placeholder="e.g. Brown Dust II"
+            placeholder="e.g. My game"
             autofocus
             @keyup.enter="confirmAddGame"
           />
@@ -1041,7 +1036,7 @@ onUnmounted(() => {
           <label>Author name</label>
           <input
             v-model="addAuthorName"
-            placeholder="e.g. Yuk11sh1d4"
+            placeholder="e.g. Mod author"
             autofocus
             @keyup.enter="confirmAddAuthor"
           />

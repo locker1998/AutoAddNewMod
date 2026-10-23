@@ -1,7 +1,7 @@
 [package]
 name = "auto-add-new-mod"
-version = "0.1.0"
-description = "Multi-game inbox: extract and place mods"
+version = "0.1.1"
+description = "Generic inbox: extract and place mods for any game"
 authors = ["kamin"]
 edition = "2021"
 

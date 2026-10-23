@@ -1,6 +1,8 @@
 # AutoAddNewMod
 
-Windows desktop app (Tauri + Vue) for importing and placing game mods from an inbox folder.
+Windows desktop app (Tauri + Vue) that installs mods for **any game**. You add the games you play and the authors you use; nothing is hard-coded to a specific title.
+
+Drop a mod onto the app (or a shortcut to it), pick **game + author**, and it extracts and places files into that game’s mod folder.
 
 ## Install
 
@@ -34,21 +36,19 @@ Keep these three versions equal, then tag `main`:
 - `src-tauri/Cargo.toml`
 
 ```powershell
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 GitHub Actions builds the installer and publishes it on that GitHub Release.
 
 ## Author custom logic
 
-There are no built-in authors or pack decryptors. Each author has a processing script (Settings → Custom logic). You write decrypt/extract steps in that script.
+There are no built-in games, authors, or pack decryptors. Add a game, add authors, then (if needed) write that author’s processing script under Settings → Custom logic.
 
 The script is Python-like (indentation, `if` / `elif` / `else`, `var`). `mod` and `message` are always available — do not declare them.
 
 After **Save**, Settings fields come from `field` lines. Hidden fields (`hide()`) are omitted from Settings.
-
-Games whose name or id looks like Brown Dust II (`bd2`, `brown dust`, …) get Yuk11sh1d4, Na0h, and H.Coel authors with scripts that match BD2ModManager decrypt/extract behavior. You can still edit those scripts.
 
 `decrypt <name>` is not valid. Old configs that had those lines are stripped on load. Placement uses the game setting **Organize by author**.
 

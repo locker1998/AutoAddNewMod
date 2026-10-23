@@ -74,7 +74,6 @@ pub fn run() {
             commands::mod_logic_template,
             commands::validate_mod_logic,
             commands::parse_author_logic,
-            commands::preset_authors_for_game,
             commands::list_inbox,
             commands::import_to_inbox,
             commands::set_inbox_meta,
