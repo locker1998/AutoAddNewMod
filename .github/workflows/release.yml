@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build NSIS installer and publish GitHub Release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: AutoAddNewMod v__VERSION__
+          releaseBody: |
+            Download **AutoAddNewMod_*_x64-setup.exe** and run it.
+
+            The installer is for the current Windows user (no administrator account required). It adds a Start Menu shortcut and will install WebView2 if Windows does not already have it.
+
+            Windows SmartScreen may warn because this build is not Authenticode-signed. Choose **More info** → **Run anyway**.
+          releaseDraft: false
+          prerelease: false
+          args: --bundles nsis

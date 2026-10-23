@@ -2,6 +2,44 @@
 
 Windows desktop app (Tauri + Vue) for importing and placing game mods from an inbox folder.
 
+## Install
+
+1. Open the [latest release](https://github.com/locker1998/AutoAddNewMod/releases/latest).
+2. Download `AutoAddNewMod_*_x64-setup.exe`.
+3. Run the installer. It installs for your Windows user (no admin) and adds a Start Menu shortcut.
+
+Windows SmartScreen may warn on first run (the installer is not code-signed yet). Choose **More info** → **Run anyway**.
+
+## Develop
+
+```powershell
+npm install
+npm run tauri dev
+```
+
+Build a local installer:
+
+```powershell
+npm run tauri:build
+```
+
+The NSIS setup exe is written under `src-tauri/target/release/bundle/nsis/`.
+
+## Release
+
+Keep these three versions equal, then tag `main`:
+
+- `package.json`
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+GitHub Actions builds the installer and publishes it on that GitHub Release.
+
 ## Author custom logic
 
 There are no built-in authors or pack decryptors. Each author has a processing script (Settings → Custom logic). You write decrypt/extract steps in that script.
